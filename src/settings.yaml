@@ -1,0 +1,14 @@
+# SentimenTrader Details
+sentimentrader:
+  username: user
+  password: password
+# Amazon RDS Details
+database:
+  username: user
+  password: password
+  host: db_host
+  port: "port_num"
+  database: dbname
+# finnhub.io token
+finnhub:
+  token: token
