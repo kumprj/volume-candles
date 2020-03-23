@@ -2,10 +2,10 @@ FROM python:3.7
 
 WORKDIR /usr/local/bin
 
-COPY requirements.txt .
-COPY createcandle.py .
-COPY credentials.py .
-COPY settings.yaml .
+COPY src/requirements.txt .
+COPY src/createcandle.py .
+COPY src/credentials.py .
+COPY src/settings_actual.yaml .
 
 RUN cat requirements.txt | xargs -n 1 python3 -m pip install
 
