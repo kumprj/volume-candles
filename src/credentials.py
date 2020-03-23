@@ -3,6 +3,6 @@ import yaml
 
 def loadCredentials():
     doc = []
-    with open("settings.yaml", 'r') as f:
+    with open("settings_actual.yaml", 'r') as f:
         doc = yaml.load(f, Loader=yaml.FullLoader)
     return doc
