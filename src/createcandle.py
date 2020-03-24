@@ -13,7 +13,8 @@ from credentials import loadCredentials
 # 'h': [257.2, 257.21, 257.69, 257.79, 257.8], 
 # 'l': [257.2, 257.21, 257.3, 257.65, 257.73], 
 # 'o': [257.2, 257.21, 257.3, 257.65, 257.75], 
-# 's': 'ok', 't': [1572910200, 1572910260, 1572910440, 1572910500, 1572910560], 'v': [322, 625, 9894, 1480, 2250]}
+# 's': 'ok', 't': [1572910200, 1572910260, 1572910440, 1572910500, 1572910560], 
+# 'v': [322, 625, 9894, 1480, 2250]}
 
 
 # Global Vars
@@ -219,7 +220,7 @@ def createCandles(etf):
                 first_candle_open = 0.0
                 current_candle_count = 1
 
-            # If-block fails? Maintain our current count and move to next candle.
+            # If-block fails? Maintain our current count and move to next time candle.
             else:
                 # print('Did not create candle. Adding next candle to total volume.')
                 current_candle_count += 1
