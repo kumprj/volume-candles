@@ -20,16 +20,16 @@ from credentials import loadCredentials
 etf_list = ['XLY', 'XLV', 'XLF', 'XLK', 'XLB', 'XLI', 'XLU', 'XLE', 'XOP', 'XLP', 'XME', 'UNG', 'USO']
 type_of_candle = '1MBar-AvgVolume2WK'
 
-upper_bound_num_candles = 4500 # 2 weeks worth of 1 minute bars. Rough figure since each ETF returns slightly different data. 
+upper_bound_num_candles = 3500 # 2 weeks worth of 1 minute bars. Rough figure since each ETF returns slightly different data. 
 
 # Three Unix Time Periods for our start times, if needed. For first run, we calculate from ETF inception, which varies based on
 # Ticker. 
 twenty_years_unix = 479779929
-fifteen_years_unix = 410127933
-uso_ung_twelve_years_unix = 402263096
+fifteen_years_unix = 407127933
+uso_ung_twelve_years_unix = 400263096
 
 # Increment 2 weeks in UNIX Standard Time
-increment_time = 600000
+increment_time = 500000
 
 lock = threading.Lock() # To help avoid API limits.
 
@@ -55,7 +55,18 @@ def createListForAverage(volume_list, start_time, end_time, etf):
         lock.acquire()
         calculate_avg_candles = requests.get(f'https://finnhub.io/api/v1/stock/candle?symbol={etf}&resolution=1&from={start_time}&to={end_time}&token={finnhub_token}')
         lock.release()
+        # tm.sleep(1)
+        # print((f'https://finnhub.io/api/v1/stock/candle?symbol={etf}&resolution=1&from={start_time}&to={end_time}&token={finnhub_token}'))
         avg_etf_candle = calculate_avg_candles.json()
+        # print('printing result')
+        # print(avg_etf_candle['v'])
+        if (avg_etf_candle['s'] == 'no_data'):
+            end_time -= increment_time
+            start_time -= increment_time
+            print(f'continue {etf} {start_time}    {end_time}')
+            tm.sleep(1) # Pause to not overload API calls.
+            continue
+
         avg_etf_candle_vol = avg_etf_candle['v']
 
         if (len(avg_etf_candle_vol) + len(candle_queue) > upper_bound_num_candles):
@@ -108,9 +119,9 @@ def createCandles(etf):
     average_volume = 0
     
     while stored_time >= start_time: # need this I think? how to handle last run? 
-        # lock.acquire()
+        lock.acquire()
         get_candle = requests.get(f'https://finnhub.io/api/v1/stock/candle?symbol={etf}&resolution=1&from={start_time}&to={end_time}&token={finnhub_token}')
-        # lock.release()
+        lock.release()
         etf_candle = get_candle.json()
         
         # If we happen to find a 'no_data' but we are still loading, just continue.
@@ -140,6 +151,8 @@ def createCandles(etf):
         if isFirstRun:
             isFirstRun = False 
             candle_queue = createListForAverage(etf_candle['v'], start_time, end_time, etf)
+            print(f'got out for {etf}')
+            print(len(candle_queue))
             num_candles_for_avg = len(candle_queue)
             for vol in candle_queue:
                 average_volume += int(vol)
@@ -161,12 +174,12 @@ def createCandles(etf):
             # print(f'added {volume} to current volume: {current_volume}. Current Average is {average} and will make new candle once current volume passes it.')
 
             # Calculate our high for the volume candle.
-            current_candle_high = close if close > current_candle_high and ope < close else ope
+            current_candle_high = close if (close > current_candle_high and close > ope) else ope
             # Calculate our low for the volume candle.
             if (current_candle_low == 0.0):
                 current_candle_low = ope if ope < close else close
             else:
-                current_candle_low = close if close < current_candle_low and close < ope else ope
+                current_candle_low = close if (close < current_candle_low and close < ope) else ope
 
             # Average is the sum of the Candle Queue, representing two weeks of data, divided by its length. We want to create a new candle
             # every time volume hits that average. This is contrary to time-based candles where you make a new one every minute.
@@ -243,6 +256,8 @@ def generateCandles():
 
     # Multithread our candle generation. Each ETF is independent so speeds up data entry because ~15-20 years takes awhile.
     # Create new thread for each process calling createCandles method. After they complete, join them all.
+    # for etf in etf_list:
+    #     createCandles(etf)
     threads = []
     for i in range(len(etf_list)):
         thread = threading.Thread(target=createCandles, args=(etf_list[i],))
