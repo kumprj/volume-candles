@@ -22,7 +22,7 @@ Let's take two super simple graph axis' and showcase them.
 
 #### Then let's change the axis, where instead of time we use Volume. 
 ![alt text]()
-<img src="src/images/candlestick_graph.png" alt="Volume Candlestick Graph">
+<img src="src/images/candlestick_graph.png"">
 
 
 ## Diving Deeper
