@@ -159,7 +159,7 @@ def createCandles(etf):
         current_candle_high = 0.0 
         current_candle_low = 0.0
         first_candle_open = 0.0
-        
+
         for close, high, low, ope, volume, time in zip(etf_candle['c'], etf_candle['h'], etf_candle['l'], etf_candle['o'], etf_candle['v'], etf_candle['t']):
             # print('--- new loop item ---')
             average = int(average_volume / num_candles_for_avg)
@@ -176,12 +176,14 @@ def createCandles(etf):
             # print(f'added {volume} to current volume: {current_volume}. Current Average is {average} and will make new candle once current volume passes it.')
 
             # Calculate our high for the volume candle.
-            current_candle_high = close if (close > current_candle_high and close > ope) else ope
+            current_candle_high = close if close > current_candle_high and close > ope else current_candle_high
+            current_candle_high = ope if ope > current_candle_high and ope > close else current_candle_high
             # Calculate our low for the volume candle.
             if (current_candle_low == 0.0):
                 current_candle_low = ope if ope < close else close
             else:
-                current_candle_low = close if (close < current_candle_low and close < ope) else ope
+                current_candle_low = close if close < current_candle_low and close < ope else current_candle_low
+                current_candle_low = ope if ope < current_candle_low and ope < close else current_candle_low
 
             # Average is the sum of the Candle Queue, representing two weeks of data, divided by its length. We want to create a new candle
             # every time volume hits that average. This is contrary to time-based candles where you make a new one every minute.
