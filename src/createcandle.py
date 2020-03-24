@@ -115,7 +115,9 @@ def createCandles(etf):
     num_candles_for_avg = 0
     average_volume = 0
     
-    while stored_time >= start_time: # need this I think? how to handle last run? 
+
+    # Large Loops could probably be optimized into functions. Once code is tested, refactor for this.
+    while stored_time >= start_time:
         lock.acquire()
         get_candle = requests.get(f'https://finnhub.io/api/v1/stock/candle?symbol={etf}&resolution=1&from={start_time}&to={end_time}&token={finnhub_token}')
         lock.release()
@@ -156,6 +158,7 @@ def createCandles(etf):
         current_volume = 0
         current_candle_high = 0.0 
         current_candle_low = 0.0
+        first_candle_open = 0.0
         for close, high, low, ope, volume, time in zip(etf_candle['c'], etf_candle['h'], etf_candle['l'], etf_candle['o'], etf_candle['v'], etf_candle['t']):
             # print('--- new loop item ---')
             
@@ -166,6 +169,11 @@ def createCandles(etf):
             low = float(low)
             close = float(close)
             ope = float(ope)
+            # We want our Volume Candle, which may represent many time candles, to have its open and close be the *open of the first candle* 
+            # and the *close of the last candle*. 
+            if (first_candle_open == 0.0):
+                first_candle_open = ope
+
             # print(f'added {volume} to current volume: {current_volume}. Current Average is {average} and will make new candle once current volume passes it.')
 
             # Calculate our high for the volume candle.
@@ -188,7 +196,7 @@ def createCandles(etf):
                             host = database_host,
                             port = database_port,
                             database = database_db)
-                insert_args = (current_candle_time, ope, close, current_candle_high, current_candle_low,
+                insert_args = (current_candle_time, first_candle_open, close, current_candle_high, current_candle_low,
                                 etf, type_of_candle, current_volume)
                 sql_insert = ''' 
                             insert into public.customcandle (enddate, open, close, high, low, ticker, type, candle_volume)
@@ -206,6 +214,7 @@ def createCandles(etf):
                 current_volume = 0
                 current_candle_high = 0.0
                 current_candle_low = 0.0
+                first_candle_open = 0.0
                 current_candle_count = 1
 
             # If-block fails? Maintain our current count and move to next candle.
@@ -213,7 +222,8 @@ def createCandles(etf):
                 # print('Did not create candle. Adding next candle to total volume.')
                 current_candle_count += 1
             # End if block for inserting
-
+            
+            # End of For Loop:
             # We don't want to give us O(n^3) complexity with these loops by recalculating the total volume from the entire queue of 3000-4000 elements.
             # However, we want to maintain a queue of the last ~2 weeks to ensure our current candle is being created based on a
             # 'relevant' volume average. Volume in 2005 is a lot different than volume in 2020, so this gives the candles more merit.
@@ -226,6 +236,7 @@ def createCandles(etf):
             average_volume += volume
             # print(f'appended {volume} to list and popped off: {remove_volume} for ETF: {etf}')
             # print('--- end candle ---')
+            # end For loop
 
         # Last stage of while Loop. After we loop through an entire API query, we increment time and do it again.
         if last_run == True:
@@ -241,7 +252,7 @@ def createCandles(etf):
             end_time = stored_time + increment_time
             last_run = True # Ensures when this block hits it is the last run.
 
-        # end for loop
+        
     # end while loop
 # end function
 
