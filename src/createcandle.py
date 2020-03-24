@@ -108,14 +108,14 @@ def createCandles(etf):
     average_volume = 0
     
     while stored_time >= start_time: # need this I think? how to handle last run? 
-        lock.acquire()
+        # lock.acquire()
         get_candle = requests.get(f'https://finnhub.io/api/v1/stock/candle?symbol={etf}&resolution=1&from={start_time}&to={end_time}&token={finnhub_token}')
-        lock.release()
+        # lock.release()
         etf_candle = get_candle.json()
         
         # If we happen to find a 'no_data' but we are still loading, just continue.
         if (etf_candle['s'] == 'no_data'):
-            print(f'etf {etf} had no results at time period {start_time} to {end_time}') # Logging assistance
+            # print(f'etf {etf} had no results at time period {start_time} to {end_time}') # Logging assistance
 
             # If we find a no_data but its also the last run, break the loop.
             if last_run == True:
@@ -146,11 +146,12 @@ def createCandles(etf):
 
         current_candle_count = 1
         current_volume = 0
+        current_candle_high = 0.0 
+        current_candle_low = 0.0
         for close, high, low, ope, volume, time in zip(etf_candle['c'], etf_candle['h'], etf_candle['l'], etf_candle['o'], etf_candle['v'], etf_candle['t']):
             # print('--- new loop item ---')
             
-            current_close_high = 0.0 
-            current_close_low = 0.0
+
             average = int(average_volume / num_candles_for_avg)
             current_volume += int(volume)
             high = float(high)
@@ -160,19 +161,18 @@ def createCandles(etf):
             # print(f'added {volume} to current volume: {current_volume}. Current Average is {average} and will make new candle once current volume passes it.')
 
             # Calculate our high for the volume candle.
-            if (ope > current_close_high):
-                current_close_high = ope
-            if (close > current_close_high and ope < close):
-                current_close_high = close
+            if (ope > current_candle_high):
+                current_candle_high = ope
+            if (close > current_candle_high and ope < close):
+                current_candle_high = close
 
+            if (ope < current_candle_low):
+                current_candle_low = ope
+            if (close < current_candle_low and ope > close):
+                current_candle_low = close
             # Calculate our low for the volume candle.
-            if (close < current_close_low or current_close_low == 0.0):
-                if (current_close_low == 0.0 and ope < close):
-                    current_close_low = ope
-                else:
-                    current_close_low = close
-            if (ope < close and ope < current_close_low and ope != 0.0):
-                current_close_low = ope
+            if (current_candle_low == 0.0):
+                current_candle_low = ope if ope < close else close
 
             # Average is the sum of the Candle Queue, representing two weeks of data, divided by its length. We want to create a new candle
             # every time volume hits that average. This is contrary to time-based candles where you make a new one every minute.
@@ -186,7 +186,7 @@ def createCandles(etf):
                             host = database_host,
                             port = database_port,
                             database = database_db)
-                insert_args = (current_candle_time, ope, close, current_close_high, current_close_low,
+                insert_args = (current_candle_time, ope, close, current_candle_high, current_candle_low,
                                 etf, type_of_candle, current_volume)
                 sql_insert = ''' 
                             insert into public.customcandle (enddate, open, close, high, low, ticker, type, candle_volume)
@@ -202,8 +202,8 @@ def createCandles(etf):
 
                 # Reset all of our current values for the next candle.
                 current_volume = 0
-                current_close_high = 0.0
-                current_close_low = 0.0
+                current_candle_high = 0.0
+                current_candle_low = 0.0
                 current_candle_count = 1
 
             # If-block fails? Maintain our current count and move to next candle.
@@ -222,8 +222,8 @@ def createCandles(etf):
 
             candle_queue.append(volume)
             average_volume += volume
-            print(f'appended {volume} to list and popped off: {remove_volume} for ETF: {etf}')
-            print('--- end candle ---')
+            # print(f'appended {volume} to list and popped off: {remove_volume} for ETF: {etf}')
+            # print('--- end candle ---')
 
         # Last stage of while Loop. After we loop through an entire API query, we increment time and do it again.
         if last_run == True:

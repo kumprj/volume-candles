@@ -1,0 +1,13 @@
+# Sentimentrader.com username and password
+sentimentrader:
+  username: sentimentrader username
+  password: sentimentrader password
+# postgres database connection information 
+database:
+  username: aws db user
+  password: aws db password
+  host: aws endpoint
+  port: "aws db port"
+  database: databasename
+  finnhub:
+    token: token
