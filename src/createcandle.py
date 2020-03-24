@@ -55,15 +55,12 @@ def createListForAverage(volume_list, start_time, end_time, etf):
         lock.acquire()
         calculate_avg_candles = requests.get(f'https://finnhub.io/api/v1/stock/candle?symbol={etf}&resolution=1&from={start_time}&to={end_time}&token={finnhub_token}')
         lock.release()
-        # tm.sleep(1)
-        # print((f'https://finnhub.io/api/v1/stock/candle?symbol={etf}&resolution=1&from={start_time}&to={end_time}&token={finnhub_token}'))
+
         avg_etf_candle = calculate_avg_candles.json()
-        # print('printing result')
-        # print(avg_etf_candle['v'])
+        # Random time periods will not return data. We know our time periods are selected after ETF origin, so just continue. 
         if (avg_etf_candle['s'] == 'no_data'):
             end_time -= increment_time
             start_time -= increment_time
-            print(f'continue {etf} {start_time}    {end_time}')
             tm.sleep(1) # Pause to not overload API calls.
             continue
 
@@ -151,8 +148,6 @@ def createCandles(etf):
         if isFirstRun:
             isFirstRun = False 
             candle_queue = createListForAverage(etf_candle['v'], start_time, end_time, etf)
-            print(f'got out for {etf}')
-            print(len(candle_queue))
             num_candles_for_avg = len(candle_queue)
             for vol in candle_queue:
                 average_volume += int(vol)
