@@ -31,7 +31,7 @@ Let's refresh on what a candle looks like in JSON:
 * 'volume': [322, 625, 9894, 1480, 2250]}
 
 
-The first question to answer is what is our parameters to create a new Volume candle? So firstly, we decided to generate Volume candles using traditional 1 minute bars. Our parameter to create a new candle is surpassing the 2 week average. So let's dive deeper - 
+The first question to answer is what are our parameters to create a new Volume candle? So firstly, we decided to generate Volume candles using traditional 1 minute bars. Our parameter to create a new candle is surpassing the 2 week average. So let's dive deeper - 
 
 Starting at ETF inception, or roughly 15 years, we put the last 2 weeks of 1 minute bars into a doubly linked queue, sum all the volumes, and calculate the average. We now have this *Average* figure. Let's say its 5000. We loop through the 1 minute bars (as a JSON response), summing Volumes until we surpass the *Average*. That could be one 1-Minute Bar, or fifteen. All we know is we want to make a new candle every time Volume passes the Average.  We maintain a running *current_volume* to track that. Once that *current_volume* value surpasses the *Average*, we create a new Volume candle. We could have four 1 minute bars get us to 4500, and the fifth bar be 6500. Our new Volume candle's volume would be 11000. We don't trim overflow and are letting the machine learning model interpret as it will. We also use the first 1 Minute Bar as our "Open" and the last 1 Minute Bar we use as the "Close", keeping track of High and Low as well. 
 
