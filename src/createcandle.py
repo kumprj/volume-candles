@@ -43,7 +43,10 @@ database_host = credentials["database"]["host"]
 database_port = credentials["database"]["port"]
 finnhub_token = credentials["finnhub"]["token"]
 
-def createListForAverage(volume_list, start_time, end_time, etf):
+
+# Method to calculate our Average value, which we will use as a threshold to generate the new Volume Candle.
+# We take the time we want to start running the job, and subtract from it. We return the queue of these elements.
+def generateAverage(volume_list, start_time, end_time, etf):
     
     global upper_bound_num_candles
     calculate_average = True
@@ -58,6 +61,7 @@ def createListForAverage(volume_list, start_time, end_time, etf):
         lock.release()
 
         avg_etf_candle = calculate_avg_candles.json()
+
         # Random time periods will not return data. We know our time periods are selected after ETF origin, so just continue. 
         if (avg_etf_candle['s'] == 'no_data'):
             end_time -= increment_time
@@ -65,12 +69,16 @@ def createListForAverage(volume_list, start_time, end_time, etf):
             tm.sleep(1) # Pause to not overload API calls.
             continue
 
+        # We want to count up to about 3500 candles. Any more felt redundant, though this may be modified. If length of the current JSON return
+        # is more than the "upper bound" variable, break from this loop. 
         avg_etf_candle_vol = avg_etf_candle['v']
-
         if (len(avg_etf_candle_vol) + len(candle_queue) > upper_bound_num_candles):
             calculate_average = False
             break
-
+        # We're decrementing backwards until roughly the 2 week mark. In order to keep our data effective and valuable, we must keep it in order.
+        # We take a JSON response that is very near our start time. The last element in the response is the *closest* to our start time. We want to ensure
+        # that is at the furthest right on the queue. In order to do that, we reverse the list, and appendleft. Appendleft basically puts the following elements
+        # behind the first one, which keeps things in order.
         avg_etf_candle['v'].reverse()
         for volume in avg_etf_candle['v']:
             candle_queue.appendleft(volume)
@@ -146,11 +154,11 @@ def createCandles(etf):
                 continue
 
 
-        # If its our first run, we want to decrement from the current time period and calculate an average for the present time period we are calculating.
-        # We add ~2 weeks of candles to queue to calculate and manage the average for that time period.
+        # If its our first run, we want to decrement from the current time period and calculate an average. 
+        # We are using 1 minute bars, so add ~2 weeks of candles to a queue. Queue calculates and manages the average for that time period.
         if isFirstRun:
             isFirstRun = False 
-            candle_queue = createListForAverage(etf_candle['v'], start_time, end_time, etf)
+            candle_queue = generateAverage(etf_candle['v'], start_time, end_time, etf)
             num_candles_for_avg = len(candle_queue)
             for vol in candle_queue:
                 average_volume += int(vol)
@@ -177,10 +185,10 @@ def createCandles(etf):
 
             # print(f'added {volume} to current volume: {current_volume}. Current Average is {average} and will make new candle once current volume passes it.')
 
-            # Calculate our high for the volume candle.
+            # Calculate our highest value for the volume candle.
             current_candle_high = close if close > current_candle_high and close > ope else current_candle_high
             current_candle_high = ope if ope > current_candle_high and ope > close else current_candle_high
-            # Calculate our low for the volume candle.
+            # Calculate our lowest for the volume candle.
             if (current_candle_low == 0.0):
                 current_candle_low = ope if ope < close else close
             else:
@@ -231,7 +239,7 @@ def createCandles(etf):
             # However, we want to maintain a queue of the last ~2 weeks to ensure our current candle is being created based on a
             # 'relevant' volume average. Volume in 2005 is a lot different than volume in 2020, so this gives the candles more merit.
             # Continue to maintain the queue, but subtract the removed element and add the new element to the sum. No need
-            # to recalculate every time.
+            # to recalculate every time. We popleft because that is the oldest element, and append on the right to label it the newest.
             remove_volume = candle_queue.popleft()
             average_volume -= remove_volume
 
@@ -245,7 +253,7 @@ def createCandles(etf):
         if last_run == True:
             break
         if stored_time > (start_time + increment_time):
-            # Increment 1 week. API only returns ~5000 rows, so we use shorter bursts.
+            # Increment. API only returns ~5000 rows, so we use shorter bursts of time.
             start_time = start_time + increment_time
             end_time = end_time + increment_time
         else:
@@ -254,7 +262,6 @@ def createCandles(etf):
             start_time = stored_time
             end_time = stored_time + increment_time
             last_run = True # Ensures when this block hits it is the last run.
-
         
     # end while loop
 # end function
