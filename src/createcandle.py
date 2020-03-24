@@ -159,10 +159,9 @@ def createCandles(etf):
         current_candle_high = 0.0 
         current_candle_low = 0.0
         first_candle_open = 0.0
+        
         for close, high, low, ope, volume, time in zip(etf_candle['c'], etf_candle['h'], etf_candle['l'], etf_candle['o'], etf_candle['v'], etf_candle['t']):
             # print('--- new loop item ---')
-            
-
             average = int(average_volume / num_candles_for_avg)
             current_volume += int(volume)
             high = float(high)
