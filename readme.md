@@ -27,12 +27,13 @@ Let's take two super simple graph axis' and showcase them.
 
 ## Diving Deeper
 Let's refresh on what a candle looks like in JSON:
-{'close': [257.2, 257.21, 257.69, 257.77, 257.75], 
-'high': [257.2, 257.21, 257.69, 257.79, 257.8], 
-'low': [257.2, 257.21, 257.3, 257.65, 257.73], 
-'open': [257.2, 257.21, 257.3, 257.65, 257.75], 
-'s': 'ok', 'time': [1572910200, 1572910260, 1572910440, 1572910500, 1572910560], 
-'volume': [322, 625, 9894, 1480, 2250]}
+
+* {'close': [257.2, 257.21, 257.69, 257.77, 257.75], 
+* 'high': [257.2, 257.21, 257.69, 257.79, 257.8], 
+* 'low': [257.2, 257.21, 257.3, 257.65, 257.73], 
+* 'open': [257.2, 257.21, 257.3, 257.65, 257.75], 
+* 's': 'ok', 'time': [1572910200, 1572910260, 1572910440, 1572910500, 1572910560], 
+* 'volume': [322, 625, 9894, 1480, 2250]}
 
 
 The first question to answer is what is our parameters to create a new Volume candle? So firstly, we decided to generate Volume candles using traditional 1 minute bars. Our parameter to create a new candle is surpassing the 2 week average. So let's dive deeper - 
