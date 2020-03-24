@@ -6,28 +6,23 @@ References this project is based on:
 * [https://towardsdatascience.com/financial-machine-learning-practitioners-have-been-using-the-wrong-candlesticks-heres-why-7a3fb85b5629](https://towardsdatascience.com/financial-machine-learning-practitioners-have-been-using-the-wrong-candlesticks-heres-why-7a3fb85b5629s)
 
 
-My friend Joey and I pseudocoded on a receipt at BDubs after reading some of the articles linked above. So what was the point?
-
-![alt text](src/images/candles.jpg)
 
 ----
 
-The short version is the theory that Volume-Based candles create better indicators than Time-based candles when trading stocks. This theory states it is because a majority of the price movement occurs in a minority amount of the candles. 
+The short version of these articles is the theory that Volume-Based candles create better indicators than Time-based candles when trading stocks. This theory states it is because a majority of the price movement occurs in a minority amount of the candles. 
 
 Let's take two super simple graph axis' and showcase them. 
 
 #### A traditional 1 Year 1 Week candlestick graph for SPY.
-![alt text](src/images/traditionally.png)
+[SPY Candle Graph](https://i.imgur.com/aQrQr6R.png)
 
 
 #### Then let's change the axis, where instead of time we use Volume. 
-![alt text]()
-<img src="src/images/candlestick_graph.png"">
+[Volume Candle Graph](https://i.imgur.com/owi2UYh.png)
 
 
 ## Diving Deeper
 Let's refresh on what a candle looks like in JSON:
-
 * {'close': [257.2, 257.21, 257.69, 257.77, 257.75], 
 * 'high': [257.2, 257.21, 257.69, 257.79, 257.8], 
 * 'low': [257.2, 257.21, 257.3, 257.65, 257.73], 
