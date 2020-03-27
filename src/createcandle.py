@@ -46,7 +46,7 @@ finnhub_token = credentials["finnhub"]["token"]
 
 # Method to calculate our Average value, which we will use as a threshold to generate the new Volume Candle.
 # We take the time we want to start running the job, and subtract from it. We return the queue of these elements.
-def generateAverage(volume_list, start_time, end_time, etf):
+def generateAverage(start_time, end_time, etf):
     
     global upper_bound_num_candles
     calculate_average = True
@@ -59,7 +59,7 @@ def generateAverage(volume_list, start_time, end_time, etf):
         lock.acquire()
         calculate_avg_candles = requests.get(f'https://finnhub.io/api/v1/stock/candle?symbol={etf}&resolution=1&from={start_time}&to={end_time}&token={finnhub_token}')
         lock.release()
-
+        print(f'https://finnhub.io/api/v1/stock/candle?symbol={etf}&resolution=1&from={start_time}&to={end_time}&token={finnhub_token}')
         avg_etf_candle = calculate_avg_candles.json()
 
         # Random time periods will not return data. We know our time periods are selected after ETF origin, so just continue. 
@@ -122,9 +122,16 @@ def createCandles(etf):
     candle_queue = collections.deque([])
     isFirstRun = True
     num_candles_for_avg = 0
-    average_volume = 0
-    
-
+    average_volume = 0 
+        # If its our first run, we want to decrement from the current time period and calculate an average. 
+        # We are using 1 minute bars, so add ~2 weeks of candles to a queue. Queue calculates and manages the average for that time period.
+    if isFirstRun:
+        isFirstRun = False 
+        candle_queue = generateAverage(start_time, end_time, etf)
+        num_candles_for_avg = len(candle_queue)
+        print(f'got out for etf {etf} ')
+        for vol in candle_queue:
+            average_volume += int(vol)
     # Large Loops could probably be optimized into functions. Once code is tested, refactor for this.
     while stored_time >= start_time:
         lock.acquire()
@@ -134,8 +141,8 @@ def createCandles(etf):
         
         # If we happen to find a 'no_data' but we are still loading, just continue.
         if (etf_candle['s'] == 'no_data'):
-            # print(f'etf {etf} had no results at time period {start_time} to {end_time}') # Logging assistance
-
+            print(f'etf {etf} had no results at time period {start_time} to {end_time}') # Logging assistance
+            tm.sleep(1) # Pause to not overload
             # If we find a no_data but its also the last run, break the loop.
             if last_run == True:
                 break
@@ -154,14 +161,7 @@ def createCandles(etf):
                 continue
 
 
-        # If its our first run, we want to decrement from the current time period and calculate an average. 
-        # We are using 1 minute bars, so add ~2 weeks of candles to a queue. Queue calculates and manages the average for that time period.
-        if isFirstRun:
-            isFirstRun = False 
-            candle_queue = generateAverage(etf_candle['v'], start_time, end_time, etf)
-            num_candles_for_avg = len(candle_queue)
-            for vol in candle_queue:
-                average_volume += int(vol)
+
 
         current_candle_count = 1
         current_volume = 0
@@ -186,7 +186,7 @@ def createCandles(etf):
             # print(f'added {volume} to current volume: {current_volume}. Current Average is {average} and will make new candle once current volume passes it.')
 
             # Calculate our highest value for the volume candle.
-            current_candle_high = close if close > current_candle_high and close > ope else current_candle_high
+            current_candle_high = close if close > current_candle_high and close >= ope else current_candle_high
             current_candle_high = ope if ope > current_candle_high and ope > close else current_candle_high
             # Calculate our lowest for the volume candle.
             if (current_candle_low == 0.0):
@@ -275,15 +275,42 @@ def generateCandles():
     # for etf in etf_list:
     #     createCandles(etf)
     threads = []
-    for i in range(len(etf_list)):
+    for i in range(5):
         thread = threading.Thread(target=createCandles, args=(etf_list[i],))
         thread.start()
         threads.append(thread)
         print(f'started thread {i}')
         tm.sleep(10)
-    
     for thread in threads:
         thread.join()
+    threads = []
+    for i in range(5,9):
+        thread = threading.Thread(target=createCandles, args=(etf_list[i],))
+        thread.start()
+        threads.append(thread)
+        print(f'started thread {i}')
+        tm.sleep(10)
+    for thread in threads:
+        thread.join()
+    threads = []
+    for i in range(8,13):
+        thread = threading.Thread(target=createCandles, args=(etf_list[i],))
+        thread.start()
+        threads.append(thread)
+        print(f'started thread {i}')
+        tm.sleep(10)
+    for thread in threads:
+        thread.join()
+
+    # for i in range(len(etf_list)):
+    #     thread = threading.Thread(target=createCandles, args=(etf_list[i],))
+    #     thread.start()
+    #     threads.append(thread)
+    #     print(f'started thread {i}')
+    #     tm.sleep(10)
+    
+    # for thread in threads:
+    #     thread.join()
 
 
     connection = psycopg2.connect(user = database_user,
