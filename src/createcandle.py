@@ -20,7 +20,7 @@ from credentials import loadCredentials
 # Global Vars
 etf_list = ['XLY', 'XLV', 'XLF', 'XLK', 'XLB', 'XLI', 'XLU', 'XLE', 'XOP', 'XLP', 'XME', 'UNG', 'USO']
 type_of_candle = '1MBar-AvgVolume2WK'
-
+  
 upper_bound_num_candles = 3500 # 2 weeks worth of 1 minute bars. Rough figure since each ETF returns slightly different data. 
 
 # Three Unix Time Periods for our start times, if needed. For first run, we calculate from ETF inception, which varies based on
@@ -28,7 +28,6 @@ upper_bound_num_candles = 3500 # 2 weeks worth of 1 minute bars. Rough figure si
 twenty_years_unix = 479779929
 fifteen_years_unix = 407127933
 uso_ung_twelve_years_unix = 400263096
-
 # Increment 2 weeks in UNIX Standard Time
 increment_time = 500000
 
@@ -47,8 +46,7 @@ finnhub_token = credentials["finnhub"]["token"]
 # Method to calculate our Average value, which we will use as a threshold to generate the new Volume Candle.
 # We take the time we want to start running the job, and subtract from it. We return the queue of these elements.
 def generateAverage(start_time, end_time, etf):
-    
-    global upper_bound_num_candles
+
     calculate_average = True
     end_time = start_time
     start_time = start_time - increment_time
@@ -201,7 +199,7 @@ def createCandles(etf):
             # The SQL Insert needs to be broken out into a new method.
             if (current_volume > average):
                 current_candle_time = dt.datetime.utcfromtimestamp(time).strftime("%m/%d/%Y %H:%M")
-                
+                lock.acquire()
                 connection = psycopg2.connect(user = database_user,
                             password = database_password,
                             host = database_host,
@@ -219,6 +217,7 @@ def createCandles(etf):
                 connection.commit()
                 cursor.close()
                 connection.close()
+                lock.release()
                 # print(f'New volume candle created using {current_candle_count} volume periods.') # Turn on for logging purpsoes
 
                 # Reset all of our current values for the next candle.
