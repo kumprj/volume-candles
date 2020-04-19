@@ -23,20 +23,14 @@ from credentials import loadCredentials
 # cur pid 3752
 # Global Vars
 etf_list = ['XLY', 'XLV', 'XLF', 'XLK', 'XLB', 'XLI', 'XLU', 'XLE', 'XOP', 'XLP', 'XME', 'UNG', 'USO']
-# etf_list = ['XLI', 'XLU', 'XLE', 'XOP', 'XLP', 'XME', 'UNG', 'USO']
 type_of_candle = '1MBar-AvgVolume2WK'
-  
 upper_bound_num_candles = 3500 # 2 weeks worth of 1 minute bars. Rough figure since each ETF returns slightly different data. 
-
 # Three Unix Time Periods for our start times, if needed. For first run, we calculate from ETF inception, which varies based on
 # Ticker. 
 twenty_years_unix = 479779929
 fifteen_years_unix = 407127933
 uso_ung_twelve_years_unix = 400263096
-# Increment 2 weeks in UNIX Standard Time
-increment_time = 600000
-
-# lock = threading.Lock() # To help avoid API limits.
+increment_time = 600000 # Increment 2 weeks in UNIX Standard Time
 
 # Database Credentials and Finnhub.io Token (data source)
 credentials = loadCredentials()
@@ -63,6 +57,22 @@ def store_row(df, row):
         df.loc[0] = row
     else:
         df.loc[insert_loc + 1] = row
+
+def update_time_interval(last_run, start_time, end_time, increment_time, stored_time):
+    # We want to ensure we run up until present day.
+    if stored_time > (start_time + increment_time):
+        # Increment 2 weeks. API only returns ~5000 rows, so we use shorter bursts.
+        start_time = start_time + increment_time
+        end_time = end_time + increment_time
+        last_run = False
+        return last_run, start_time, end_time
+    else:
+        # If the stored time is higher, we want to use this as our start_time and call this our last run. This matters when we are running frequently
+        # so that we do not run the script on data a second time.
+        start_time = stored_time
+        end_time = stored_time + increment_time
+        last_run = True # Ensures when this block hits it is the last run.
+        return last_run, start_time, end_time
 
 # Method to calculate our Average value, which we will use as a threshold to generate the new Volume Candle.
 # We take the time we want to start running the job, and subtract from it. We return the queue of these elements.
@@ -149,7 +159,6 @@ def createCandles(etf):
         isFirstRun = False 
         candle_queue = generateAverage(start_time, end_time, etf)
         num_candles_for_avg = len(candle_queue)
-        print(f'got out for etf {etf} ')
         for vol in candle_queue:
             average_volume += int(vol)
 
@@ -167,18 +176,8 @@ def createCandles(etf):
             # If we find a no_data but its also the last run, break the loop.
             if last_run == True:
                 break
-            # We want to ensure we run up until present day.
-            if stored_time > (start_time + increment_time):
-                # Increment 2 weeks. API only returns ~5000 rows, so we use shorter bursts.
-                start_time = start_time + increment_time
-                end_time = end_time + increment_time
-                continue
             else:
-                # If the stored time is higher, we want to use this as our start_time and call this our last run. This matters when we are running frequently
-                # so that we do not run the script on data a second time.
-                start_time = stored_time
-                end_time = stored_time + increment_time
-                last_run = True # Ensures when this block hits it is the last run.
+                last_run, start_time, end_time = update_time_interval(last_run, start_time, end_time, increment_time, stored_time)
                 continue
 
         current_candle_count = 1
@@ -242,7 +241,8 @@ def createCandles(etf):
             # End of For Loop:
             # We don't want to give us O(n^3) complexity with these loops by recalculating the total volume from the entire queue of 3000-4000 elements.
             # However, we want to maintain a queue of the last ~2 weeks to ensure our current candle is being created based on a
-            # 'relevant' volume average. Volume in 2005 is a lot different than volume in 2020, so this gives the candles more merit.
+            # 'relevant' volume average. Volume in 2005 is a lot different than volume in 2020.
+            # Basing it off recent periods (EMA kind of idea) gives the candles more merit.
             # Continue to maintain the queue, but subtract the removed element and add the new element to the sum. No need
             # to recalculate every time. We popleft because that is the oldest element, and append on the right to label it the newest.
             remove_volume = candle_queue.popleft()
@@ -261,18 +261,11 @@ def createCandles(etf):
         con.close()
         engine.dispose()
         df = df.iloc[0:0]
+
         if last_run == True:
             break
-        if stored_time > (start_time + increment_time):
-            # Increment. API only returns ~5000 rows, so we use shorter bursts of time.
-            start_time = start_time + increment_time
-            end_time = end_time + increment_time
         else:
-            # If the stored time is higher, we want to use this as our start_time and call this our last run. This matters when we are running frequently
-            # so that we do not run the script on data a second time.
-            start_time = stored_time
-            end_time = stored_time + increment_time
-            last_run = True # Ensures when this block hits it is the last run.
+            last_run, start_time, end_time = update_time_interval(last_run, start_time, end_time, increment_time, stored_time)
         
     # end while loop
 # end function
