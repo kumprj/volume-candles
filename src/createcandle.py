@@ -42,7 +42,7 @@ database_host = credentials["database"]["host"]
 database_port = credentials["database"]["port"]
 finnhub_token = credentials["finnhub"]["token"]
 
-
+## Got to 3/27 for first three ETFs
 # Method to calculate our Average value, which we will use as a threshold to generate the new Volume Candle.
 # We take the time we want to start running the job, and subtract from it. We return the queue of these elements.
 def generateAverage(start_time, end_time, etf):
