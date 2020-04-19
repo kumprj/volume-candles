@@ -20,7 +20,7 @@ from credentials import loadCredentials
 # 's': 'ok', 't': [1572910200, 1572910260, 1572910440, 1572910500, 1572910560], 
 # 'v': [322, 625, 9894, 1480, 2250]}
 
-
+# cur pid 3752
 # Global Vars
 etf_list = ['XLY', 'XLV', 'XLF', 'XLK', 'XLB', 'XLI', 'XLU', 'XLE', 'XOP', 'XLP', 'XME', 'UNG', 'USO']
 # etf_list = ['XLI', 'XLU', 'XLE', 'XOP', 'XLP', 'XME', 'UNG', 'USO']
@@ -97,7 +97,7 @@ def generateAverage(start_time, end_time, etf):
             break
         # We're decrementing backwards until roughly the 2 week mark. In order to keep our data effective and valuable, we must keep it in order.
         # We take a JSON response that is very near our start time. The last element in the response is the *closest* to our start time. We want to ensure
-        # that is at the furthest right on the queue. In order to do that, we reverse the list, and appendleft. Appendleft basically puts the following elements
+        # that is at the furthest right on the queue. In order to do that, we reverse the list, and appendleft. Appendleft puts the following elements
         # behind the first one, which keeps things in order.
         avg_etf_candle['v'].reverse()
         for volume in avg_etf_candle['v']:
@@ -163,7 +163,7 @@ def createCandles(etf):
         # If we happen to find a 'no_data' but we are still loading data, just continue. Its a one-off.
         if (etf_candle['s'] == 'no_data'):
             print(f'etf {etf} had no results at time period {start_time} to {end_time}') # Logging assistance
-            tm.sleep(1) # Pause to not overload
+            tm.sleep(2) # Pause to not overload
             # If we find a no_data but its also the last run, break the loop.
             if last_run == True:
                 break
@@ -260,7 +260,7 @@ def createCandles(etf):
         df.to_sql('customcandle', engine, schema='public', index=False, if_exists="append")
         con.close()
         engine.dispose()
-        df.iloc[0:0]
+        df = df.iloc[0:0]
         if last_run == True:
             break
         if stored_time > (start_time + increment_time):
