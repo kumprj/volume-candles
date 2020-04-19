@@ -1,4 +1,4 @@
-# Volume Based Candles as Opposed to Time Base
+# Volume-Based Candles as Opposed to Time-Based
 
 References this project is based on: 
 * [https://tradingsim.com/blog/volume-candlesticks/](https://tradingsim.com/blog/volume-candlesticks/)
@@ -30,10 +30,9 @@ Let's refresh on what a candle looks like in JSON:
 * 's': 'ok', 'time': [1572910200, 1572910260, 1572910440, 1572910500, 1572910560], 
 * 'volume': [322, 625, 9894, 1480, 2250]}
 
-
 The first question to answer is what are our parameters to create a new Volume candle? So firstly, we decided to generate Volume candles using traditional 1 minute bars. Our parameter to create a new candle is surpassing the 2 week average. So let's dive deeper - 
 
-Starting at ETF inception, or roughly 15 years, we put the last 2 weeks of 1 minute bars into a doubly linked queue, sum all the volumes, and calculate the average. We now have this *Average* figure. Let's say its 5000. We loop through the 1 minute bars, summing Volumes until we surpass the *Average Volume*. That could be one 1-Minute Bar, or fifteen. All we know is we want to make a new candle every time Volume passes the Average Volume.  We maintain a running *current_volume* to track that. Once that *current_volume* value surpasses the *Average*, we create a new Volume candle. We could have four 1 minute bars get us to 4500, and the fifth bar be 6500. Our new Volume candle's volume would be 11000. We don't trim overflow and are letting the machine learning model interpret as it will. We also use the first 1 Minute Bar as our "Open" and the last 1 Minute Bar we use as the "Close", keeping track of High and Low as well. 
+Starting at ETF inception, or roughly 15 years, we put the last 2 weeks of 1 minute bars into a doubly linked queue, sum all the volumes, and calculate the average. We now have this *Average* figure. Let's say its 5000. We loop through the 1 minute bars, summing Volumes until we surpass the *Average Volume*. That could be one 1-Minute Bar, or fifteen. All we know is we want to make a new candle every time Volume passes the Average Volume.  We maintain a running *current_volume* to track that. Once that *current_volume* value surpasses the *Average Volume*, we create a new Volume candle. We could have four 1 minute bars get us to 4500 (short of our 5000 goal), and the fifth bar be 6500. Our new Volume candle's volume would be 11000, despite the average being 5000. We don't trim overflow and are letting the machine learning model interpret as it will. We also use the first 1 Minute Bar as our "Open" and the last 1 Minute Bar we use as the "Close", keeping track of High and Low as well. 
 
 Once we create a new Volume candle, we reset our values and continue looping. This is not a fast operation unfortunately, and time complexity became a concern. I began multithreading this process because each ETF is independent. Python has nice, easy-to-use libraries for it too. The Python script createcandle.py in src is what completes this process for us. 
 
