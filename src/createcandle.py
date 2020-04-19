@@ -1,16 +1,18 @@
-import requests
-import json
+
+
 import collections
 import copy
+from credentials import loadCredentials
+import datetime as dt
+import json
 import psycopg2
 import pandas as pd
 import numpy as np
+import requests
 import sqlalchemy
 from sqlalchemy import create_engine
 import time as tm
-import datetime as dt
 import threading
-from credentials import loadCredentials
 
 # Sample JSON Response from the Finnhub API.
 # {'c': [257.2, 257.21, 257.69, 257.77, 257.75], 
@@ -20,13 +22,11 @@ from credentials import loadCredentials
 # 's': 'ok', 't': [1572910200, 1572910260, 1572910440, 1572910500, 1572910560], 
 # 'v': [322, 625, 9894, 1480, 2250]}
 
-# cur pid 3752
 # Global Vars
 etf_list = ['XLY', 'XLV', 'XLF', 'XLK', 'XLB', 'XLI', 'XLU', 'XLE', 'XOP', 'XLP', 'XME', 'UNG', 'USO']
 type_of_candle = '1MBar-AvgVolume2WK'
 upper_bound_num_candles = 3500 # 2 weeks worth of 1 minute bars. Rough figure since each ETF returns slightly different data. 
-# Three Unix Time Periods for our start times, if needed. For first run, we calculate from ETF inception, which varies based on
-# Ticker. 
+# Three Unix Time Periods for our start times, if needed. For first run, we calculate from ETF inception, which varies based on Ticker.
 twenty_years_unix = 479779929
 fifteen_years_unix = 407127933
 uso_ung_twelve_years_unix = 400263096
@@ -65,14 +65,14 @@ def update_time_interval(last_run, start_time, end_time, increment_time, stored_
         start_time = start_time + increment_time
         end_time = end_time + increment_time
         last_run = False
-        return last_run, start_time, end_time
     else:
         # If the stored time is higher, we want to use this as our start_time and call this our last run. This matters when we are running frequently
         # so that we do not run the script on data a second time.
         start_time = stored_time
         end_time = stored_time + increment_time
         last_run = True # Ensures when this block hits it is the last run.
-        return last_run, start_time, end_time
+
+    return last_run, start_time, end_time
 
 # Method to calculate our Average value, which we will use as a threshold to generate the new Volume Candle.
 # We take the time we want to start running the job, and subtract from it. We return the queue of these elements.
@@ -87,7 +87,7 @@ def generateAverage(start_time, end_time, etf):
 
     while calculate_average == True:
         calculate_avg_candles = requests.get(f'https://finnhub.io/api/v1/stock/candle?symbol={etf}&resolution=1&from={start_time}&to={end_time}&token={finnhub_token}')
-        print(f'https://finnhub.io/api/v1/stock/candle?symbol={etf}&resolution=1&from={start_time}&to={end_time}&token={finnhub_token}')
+        # print(f'https://finnhub.io/api/v1/stock/candle?symbol={etf}&resolution=1&from={start_time}&to={end_time}&token={finnhub_token}')
         avg_etf_candle = calculate_avg_candles.json()
 
         # Random time periods will not return data. We know our time periods are selected after ETF origin, so just continue. 
@@ -115,7 +115,7 @@ def generateAverage(start_time, end_time, etf):
         end_time = end_time - increment_time
         start_time = start_time - increment_time
         current_lookback+=1
-
+    # End While Loop.
     return candle_queue
 
 
