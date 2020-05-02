@@ -1,5 +1,3 @@
-
-
 import collections
 import copy
 from credentials import loadCredentials
@@ -44,10 +42,10 @@ finnhub_token = credentials["finnhub"]["token"]
 
 def rds_connect():
     return psycopg2.connect(user = database_user,
-        password = database_password,
-        host = database_host,
-        port = database_port,
-        database = database_db)
+                            password = database_password,
+                            host = database_host,
+                            port = database_port,
+                            database = database_db)
 
 
 def store_row(df, row):
@@ -87,6 +85,7 @@ def generateAverage(start_time, end_time, etf):
 
     while calculate_average == True:
         calculate_avg_candles = requests.get(f'https://finnhub.io/api/v1/stock/candle?symbol={etf}&resolution=1&from={start_time}&to={end_time}&token={finnhub_token}')
+        tm.sleep(1)
         # print(f'https://finnhub.io/api/v1/stock/candle?symbol={etf}&resolution=1&from={start_time}&to={end_time}&token={finnhub_token}')
         avg_etf_candle = calculate_avg_candles.json()
 
@@ -95,7 +94,7 @@ def generateAverage(start_time, end_time, etf):
             end_time -= increment_time
             start_time -= increment_time
             current_lookback+=1
-            tm.sleep(2) # Pause to not overload API calls.
+            tm.sleep(10) # Pause to not overload API calls.
             continue
 
         # We want to count up to about 3500 candles. Any more felt redundant, though this may be modified. If length of the current JSON return
@@ -158,6 +157,7 @@ def create_vol_candle(etf, etf_candle, df, num_candles_for_avg, average_volume, 
             insert_args = (current_candle_time, first_candle_open, close, current_candle_high, current_candle_low,
                             etf, type_of_candle, current_volume)
             store_row(df, insert_args)
+            # print(f'Inserting: {current_candle_time}')
             # print(f'New volume candle created using {current_candle_count} volume periods.') # Turn on for logging purpose.
             # Reset all of our current values for the next candle.
             current_volume = 0
@@ -194,9 +194,9 @@ def instantiate_time_period(etf, stored_time):
     # Else this job has been run before and grab the stored time value from the DB. 
     else:
         stored_time = int(stored_time[0])
-        end_time = int(tm.time())
+        end_time = stored_time + increment_time
         start_time = stored_time   
-
+        stored_time = int(tm.time())
     return end_time, start_time, stored_time
 
 
@@ -245,7 +245,7 @@ def createCandles(etf):
                 break
             else:
                 last_run, start_time, end_time = update_time_interval(last_run, start_time, end_time, increment_time, stored_time)
-                tm.sleep(2) # Pause to not overload
+                tm.sleep(7) # Pause to not overload
                 continue
 
         # Loop through our JSON object to create the candles.
@@ -254,7 +254,7 @@ def createCandles(etf):
         # Last stage of while Loop. After we loop through an entire API query, we store the df, increment time and do it again.
         engine = create_engine(f'postgresql://{database_user}:{database_password}@{database_host}:{database_port}/{database_db}')
         con = engine.connect()
-        df.to_sql('customcandle2', engine, schema='public', index=False, if_exists="append")
+        df.to_sql('customcandle', engine, schema='public', index=False, if_exists="append")
         con.close()
         engine.dispose()
         df = df.iloc[0:0]
