@@ -1,4 +1,4 @@
-# Volume-Based Candles as Opposed to Time-Based
+# Volume-Based Candles
 
 References this project is based on: 
 * [https://tradingsim.com/blog/volume-candlesticks/](https://tradingsim.com/blog/volume-candlesticks/)
