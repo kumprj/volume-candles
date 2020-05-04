@@ -113,7 +113,7 @@ def generateAverage(start_time, end_time, etf):
 
         end_time = end_time - increment_time
         start_time = start_time - increment_time
-        current_lookback+=1
+        current_lookback += 1
     # End While Loop.
     return candle_queue
 
@@ -233,7 +233,7 @@ def prepare_candle(etf):
         avg_volume_size = len(candle_queue)
         for vol in candle_queue:
             average_volume += int(vol)
-
+    
     while stored_time >= start_time:
         get_candle = requests.get(f'https://finnhub.io/api/v1/stock/candle?symbol={etf}&resolution=1&from={start_time}&to={end_time}&token={finnhub_token}')
         etf_candle = get_candle.json()
