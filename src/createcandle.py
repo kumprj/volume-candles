@@ -39,7 +39,7 @@ database_host = credentials["database"]["host"]
 database_port = credentials["database"]["port"]
 finnhub_token = credentials["finnhub"]["token"]
 
-
+# Connect to our Postgres RDS. 
 def rds_connect():
     return psycopg2.connect(user = database_user,
                             password = database_password,
@@ -47,7 +47,7 @@ def rds_connect():
                             port = database_port,
                             database = database_db)
 
-
+# Location the max length of the dataframe and append our candle to the end.
 def store_row(df, row):
     insert_loc = df.index.max()
 
@@ -56,6 +56,8 @@ def store_row(df, row):
     else:
         df.loc[insert_loc + 1] = row
 
+# Function to increment our time interval to continue generating candles. Needed because of API limits
+# and we can't load many years of data at a time. Downsides of free resources.
 def update_time_interval(last_run, start_time, end_time, increment_time, stored_time):
     # We want to ensure we run up until present day.
     if stored_time > (start_time + increment_time):
@@ -85,8 +87,6 @@ def generateAverage(start_time, end_time, etf):
 
     while calculate_average == True:
         calculate_avg_candles = requests.get(f'https://finnhub.io/api/v1/stock/candle?symbol={etf}&resolution=1&from={start_time}&to={end_time}&token={finnhub_token}')
-        tm.sleep(1)
-        # print(f'https://finnhub.io/api/v1/stock/candle?symbol={etf}&resolution=1&from={start_time}&to={end_time}&token={finnhub_token}')
         avg_etf_candle = calculate_avg_candles.json()
 
         # Random time periods will not return data. We know our time periods are selected after ETF origin, so just continue. 
@@ -117,8 +117,8 @@ def generateAverage(start_time, end_time, etf):
     # End While Loop.
     return candle_queue
 
-
-def create_vol_candle(etf, etf_candle, df, num_candles_for_avg, average_volume, candle_queue):
+# Function that creates the volume candle. Loop until we surpass the two week value average, and then create a candle for insert.
+def create_vol_candle(etf, etf_candle, df, avg_volume_size, average_volume, candle_queue):
     current_candle_count = 1
     current_volume = 0
     current_candle_high = 0.0 
@@ -127,14 +127,12 @@ def create_vol_candle(etf, etf_candle, df, num_candles_for_avg, average_volume, 
 
     # Break this into functin once we're certain all the details are ironed out.
     for close, high, low, open_, volume, time in zip(etf_candle['c'], etf_candle['h'], etf_candle['l'], etf_candle['o'], etf_candle['v'], etf_candle['t']):
-        average = int(average_volume / num_candles_for_avg)
+        average = int(average_volume / avg_volume_size)
         current_volume += int(volume)
         high = float(high)
         low = float(low)
         close = float(close)
         open_ = float(open_)
-        # print(f'added {volume} to current volume: {current_volume}. Current Average is {average} and will make new candle once current volume passes it.')
-        # print('--- new loop item ---')
         # We want our Volume Candle, which may represent many time candles, to have its open and close be the *open of the first candle* 
         # and the *close of the last candle*. 
         if (first_candle_open == 0.0):
@@ -157,33 +155,34 @@ def create_vol_candle(etf, etf_candle, df, num_candles_for_avg, average_volume, 
             insert_args = (current_candle_time, first_candle_open, close, current_candle_high, current_candle_low,
                             etf, type_of_candle, current_volume)
             store_row(df, insert_args)
-            # print(f'Inserting: {current_candle_time}')
-            # print(f'New volume candle created using {current_candle_count} volume periods.') # Turn on for logging purpose.
+
             # Reset all of our current values for the next candle.
             current_volume = 0
             current_candle_high = 0.0
             current_candle_low = 0.0
             first_candle_open = 0.0
             current_candle_count = 1
+
         # If-block fails? Maintain our current count and move to next time candle.
         else:
-            # print('Did not create candle. Adding next candle to total volume.')
             current_candle_count += 1
         # End if block for inserting
         
+        # Update our queue with the most recent value, and pop off the oldest.
         remove_volume = candle_queue.popleft()
         average_volume -= remove_volume
         candle_queue.append(volume)
         average_volume += volume
-        # print(f'appended {volume} to list and popped off: {remove_volume} for ETF: {etf}')
-        # print('--- end candle ---')
         # end For loop
     return df
 
+# Method to instantiate the time periods we're working with.
+# Calculate relevant ETF inception time. Varies slightly per ticker so need to generate some edge cases. Looking to migrate this to SQL Table instead of
+# global vars. 
 def instantiate_time_period(etf, stored_time):
-    # If we have no time value stored, start with ETF Inception.
+
+    # If we have no time value stored, start with ETF Inception Date.
     if (stored_time == None):
-        # Calculate relevant ETF inception time. Varies slightly per ticker so need to generate some edge cases.
         time_to_inception = fifteen_years_unix if (etf == 'XOP' or etf == 'XME') else twenty_years_unix
         if (etf == 'UNG' or etf == 'USO'): 
             time_to_inception = uso_ung_twelve_years_unix
@@ -199,7 +198,7 @@ def instantiate_time_period(etf, stored_time):
         stored_time = int(tm.time())
     return end_time, start_time, stored_time
 
-
+# Check our secondary database table to see if we have a 'last time this was run' element.
 def fetch_stored_time(etf):
     connection = rds_connect()
     cursor = connection.cursor()
@@ -210,26 +209,28 @@ def fetch_stored_time(etf):
     connection.close()
     return stored_time
 
+# Function that pulls from our datasource, initiates the average volume calculation, and calls the function to actually generate
+# the volume candle.
+def prepare_candle(etf):
 
-def createCandles(etf):
-
-    # Instantiate our variables.
+    # Instantiate our variables. Two bools to check if its our first/last run, our time periods to work with, a queue for storing recent datapoints,
+    # and a dataframe for insertion.
     stored_time = fetch_stored_time(etf)
     end_time, start_time, stored_time = instantiate_time_period(etf, stored_time)    
     last_run = False
-    isFirstRun = True
+    first_run = True
     candle_queue = collections.deque([])
-    num_candles_for_avg = 0
+    avg_volume_size = 0
     average_volume = 0 
     df_columns = ["enddate", "open", "close", "high", "low", "ticker", "type", "candle_volume"]
     df = pd.DataFrame(columns=df_columns)
 
     # If its our first run, we want to decrement from the start time period and calculate an average. 
     # We are using 1 minute bars, so add ~2 weeks of candles to a queue. Queue stores our candle average size.
-    if isFirstRun:
-        isFirstRun = False 
+    if first_run:
+        first_run = False 
         candle_queue = generateAverage(start_time, end_time, etf)
-        num_candles_for_avg = len(candle_queue)
+        avg_volume_size = len(candle_queue)
         for vol in candle_queue:
             average_volume += int(vol)
 
@@ -237,19 +238,18 @@ def createCandles(etf):
         get_candle = requests.get(f'https://finnhub.io/api/v1/stock/candle?symbol={etf}&resolution=1&from={start_time}&to={end_time}&token={finnhub_token}')
         etf_candle = get_candle.json()
         
-        # If we happen to find a 'no_data' but we are still loading data, just continue. Its a one-off.
+        # If we happen to find a 'no_data' but we are still loading data, just continue. Its a one-off issue with datasource.
         if (etf_candle['s'] == 'no_data'):
-            # print(f'etf {etf} had no results at time period {start_time} to {end_time}') # Logging assistance
             # If we find a no_data but its also the last run, break the loop.
             if last_run == True:  
                 break
             else:
                 last_run, start_time, end_time = update_time_interval(last_run, start_time, end_time, increment_time, stored_time)
-                tm.sleep(7) # Pause to not overload
+                tm.sleep(7) # Pause to not overload API.
                 continue
 
         # Loop through our JSON object to create the candles.
-        df = create_vol_candle(etf, etf_candle, df, num_candles_for_avg, average_volume, candle_queue)
+        df = create_vol_candle(etf, etf_candle, df, avg_volume_size, average_volume, candle_queue)
 
         # Last stage of while Loop. After we loop through an entire API query, we store the df, increment time and do it again.
         engine = create_engine(f'postgresql://{database_user}:{database_password}@{database_host}:{database_port}/{database_db}')
@@ -266,10 +266,11 @@ def createCandles(etf):
     # end while loop
 # end function
 
-def generateCandles():
+# Function to loop through the ETFs and store our "restart" elements in the RDS.
+def generate_candles():
 
     for etf in etf_list:
-        createCandles(etf)
+        prepare_candle(etf)
 
         connection = rds_connect()
         cursor = connection.cursor()
@@ -287,7 +288,7 @@ def generateCandles():
         connection.close()
 
 def main():
-    generateCandles()  
+    generate_candles()  
 
 if __name__ == "__main__":
     main()
