@@ -264,13 +264,14 @@ def prepare_candle(etf):
         else:
             last_run, start_time, end_time = update_time_interval(last_run, start_time, end_time, increment_time, stored_time)
     # end while loop
+    return stored_time
 # end function
 
 # Function to loop through the ETFs and store our "restart" elements in the RDS.
 def generate_candles():
 
     for etf in etf_list:
-        prepare_candle(etf)
+        stored_time = prepare_candle(etf)
 
         connection = rds_connect()
         cursor = connection.cursor()
@@ -280,8 +281,7 @@ def generate_candles():
         connection.commit()
 
         # Insert new value for endtime used on future/present day runs.
-        end_time = tm.time()
-        sql_insert = f'insert into public.customcandle_lasttime (endtime, type, etf) values ({end_time}, \'{type_of_candle}\', \'{etf}\')'
+        sql_insert = f'insert into public.customcandle_lasttime (endtime, type, etf) values ({stored_time}, \'{type_of_candle}\', \'{etf}\')'
         cursor.execute(sql_insert)
         connection.commit()
         cursor.close()
