@@ -36,4 +36,3 @@ Starting at ETF inception, or roughly 15 years, we put the last 2 weeks of 1 min
 
 Once we create a new Volume candle, we reset our values and continue looping. This is not a fast operation unfortunately, and time complexity became a concern. I began multithreading this process because each ETF is independent. Python has nice, easy-to-use libraries for it too. The Python script createcandle.py in src is what completes this process for us. 
 
-Lastly, the plan is to containerize this application and schedule runs. I have traditionally done this using Fargate but we are also exploring other options like Apache Airflow. The Machine Learning Model that will consume this, written by a friend of mine, will likely run in SageMaker so we may want to keep things in Amazon.
