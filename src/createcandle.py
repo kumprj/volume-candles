@@ -21,7 +21,7 @@ import threading
 # 'v': [322, 625, 9894, 1480, 2250]}
 
 # Global Vars
-etf_list = ['XLY', 'XLV', 'XLF', 'XLK', 'XLB', 'XLI', 'XLU', 'XLE', 'XOP', 'XLP', 'XME', 'UNG', 'USO']
+etf_list = ['AMZN', 'XLY', 'XLV', 'XLF', 'XLK', 'XLB', 'XLI', 'XLU', 'XLE', 'XOP', 'XLP', 'XME', 'UNG', 'USO']
 type_of_candle = '1MBar-AvgVolume2WK'
 upper_bound_num_candles = 3500 # 2 weeks worth of 1 minute bars. Rough figure since each ETF returns slightly different data. 
 # Three Unix Time Periods for our start times, if needed. For first run, we calculate from ETF inception, which varies based on Ticker.
@@ -88,7 +88,7 @@ def generateAverage(start_time, end_time, etf):
     while calculate_average == True:
         calculate_avg_candles = requests.get(f'https://finnhub.io/api/v1/stock/candle?symbol={etf}&resolution=1&from={start_time}&to={end_time}&token={finnhub_token}')
         avg_etf_candle = calculate_avg_candles.json()
-
+        tm.sleep(1)
         # Random time periods will not return data. We know our time periods are selected after ETF origin, so just continue. 
         if (avg_etf_candle['s'] == 'no_data'):
             end_time -= increment_time
@@ -189,7 +189,7 @@ def instantiate_time_period(etf, stored_time):
 
         end_time = int(tm.time()) - time_to_inception
         start_time = end_time - increment_time
-        stored_time = int(tm.time()) - increment_time
+        stored_time = int(tm.time())
     # Else this job has been run before and grab the stored time value from the DB. 
     else:
         stored_time = int(stored_time[0])
