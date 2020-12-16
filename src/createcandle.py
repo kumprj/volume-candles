@@ -272,25 +272,23 @@ def generate_candles():
     for etf in etf_list:
         try:
             prepare_candle(etf)
+
+            connection = rds_connect()
+            cursor = connection.cursor()
+            # Delete currently stored value of endtime. We only want one stored at a time.
+            sql_delete = f'delete from public.customcandle_lasttime where type = \'{type_of_candle}\' and etf = \'{etf}\''
+            cursor.execute(sql_delete)
+            connection.commit()
+
+            # Insert new value for endtime used on future/present day runs.
+            end_time = tm.time()
+            sql_insert = f'insert into public.customcandle_lasttime (endtime, type, etf) values ({end_time}, \'{type_of_candle}\', \'{etf}\')'
+            cursor.execute(sql_insert)
+            connection.commit()
+            cursor.close()
+            connection.close()
         except AssertionError as error:
             print(error)
-            
-
-
-        connection = rds_connect()
-        cursor = connection.cursor()
-        # Delete currently stored value of endtime. We only want one stored at a time.
-        sql_delete = f'delete from public.customcandle_lasttime where type = \'{type_of_candle}\' and etf = \'{etf}\''
-        cursor.execute(sql_delete)
-        connection.commit()
-
-        # Insert new value for endtime used on future/present day runs.
-        end_time = tm.time()
-        sql_insert = f'insert into public.customcandle_lasttime (endtime, type, etf) values ({end_time}, \'{type_of_candle}\', \'{etf}\')'
-        cursor.execute(sql_insert)
-        connection.commit()
-        cursor.close()
-        connection.close()
 
 def main():
     generate_candles()  
