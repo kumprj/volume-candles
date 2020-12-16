@@ -270,7 +270,12 @@ def prepare_candle(etf):
 def generate_candles():
 
     for etf in etf_list:
-        prepare_candle(etf)
+        try:
+            prepare_candle(etf)
+        except AssertionError as error:
+            print(error)
+            
+
 
         connection = rds_connect()
         cursor = connection.cursor()
