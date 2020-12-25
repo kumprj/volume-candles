@@ -305,8 +305,7 @@ def generate_candles():
 
 # Handler
 def my_handler(event, context):
-    print('hi')
-    # main()
+    main()
 
 # if __name__ == "__main__":
 #     main()
