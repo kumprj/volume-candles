@@ -21,7 +21,7 @@ import threading
 # 'v': [322, 625, 9894, 1480, 2250]}
 
 # Global Vars
-etf_list = ['AMZN', 'XLY', 'XLV', 'XLF', 'XLK', 'XLB', 'XLI', 'XLU', 'XLE', 'XOP', 'XLP', 'XME', 'UNG', 'USO']
+etf_list = ['AMZN', 'XLY', 'XLV', 'XLF', 'XLK', 'XLB', 'XLI', 'XLU', 'XLE', 'XOP', 'XLP', 'XME', 'UNG'] # , 'USO'
 type_of_candle = '1MBar-AvgVolume2WK'
 upper_bound_num_candles = 3500 # 2 weeks worth of 1 minute bars. Rough figure since each ETF returns slightly different data. 
 # Three Unix Time Periods for our start times, if needed. For first run, we calculate from ETF inception, which varies based on Ticker.
@@ -277,26 +277,23 @@ def prepare_candle(etf):
 def generate_candles():
 
     for etf in etf_list:
-        try:
-            prepare_candle(etf)
+        prepare_candle(etf)
 
-            connection = rds_connect()
-            cursor = connection.cursor()
-            # Delete currently stored value of endtime. We only want one stored at a time.
-            sql_delete = f'delete from public.customcandle_lasttime where type = \'{type_of_candle}\' and etf = \'{etf}\''
-            cursor.execute(sql_delete)
-            connection.commit()
+        connection = rds_connect()
+        cursor = connection.cursor()
+        # Delete currently stored value of endtime. We only want one stored at a time.
+        sql_delete = f'delete from public.customcandle_lasttime where type = \'{type_of_candle}\' and etf = \'{etf}\''
+        cursor.execute(sql_delete)
+        connection.commit()
 
-            # Insert new value for endtime used on future/present day runs.
-            end_time = tm.time()
-            sql_insert = f'insert into public.customcandle_lasttime (endtime, type, etf) values ({end_time}, \'{type_of_candle}\', \'{etf}\')'
-            cursor.execute(sql_insert)
-            connection.commit()
-            cursor.close()
-            connection.close()
-            print(f'Completed {etf}')
-        except AssertionError as error:
-            print(error)
+        # Insert new value for endtime used on future/present day runs.
+        end_time = tm.time()
+        sql_insert = f'insert into public.customcandle_lasttime (endtime, type, etf) values ({end_time}, \'{type_of_candle}\', \'{etf}\')'
+        cursor.execute(sql_insert)
+        connection.commit()
+        cursor.close()
+        connection.close()
+        print(f'Completed {etf}')
 
 # def main():
 #     generate_candles()  
