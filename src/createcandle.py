@@ -1,6 +1,6 @@
 import collections
 import copy
-from credentials import loadCredentials
+import os
 import datetime as dt
 import json
 import psycopg2
@@ -21,7 +21,7 @@ import threading
 # 'v': [322, 625, 9894, 1480, 2250]}
 
 # Global Vars
-etf_list = ['AMZN', 'XLY', 'XLV', 'XLF', 'XLK', 'XLB', 'XLI', 'XLU', 'XLE', 'XOP', 'XLP', 'XME', 'UNG', 'USO']
+etf_list = ['AMZN', 'XLY', 'XLV', 'XLF', 'XLK', 'XLB', 'XLI', 'XLU', 'XLE', 'XOP', 'XLP', 'XME', 'UNG'] # , 'USO'
 type_of_candle = '1MBar-AvgVolume2WK'
 upper_bound_num_candles = 3500 # 2 weeks worth of 1 minute bars. Rough figure since each ETF returns slightly different data. 
 # Three Unix Time Periods for our start times, if needed. For first run, we calculate from ETF inception, which varies based on Ticker.
@@ -31,13 +31,20 @@ uso_ung_twelve_years_unix = 400263096
 increment_time = 600000 # Increment 2 weeks in UNIX Standard Time
 
 # Database Credentials and Finnhub.io Token (data source)
-credentials = loadCredentials()
-database_user = credentials["database"]["username"]
-database_password = credentials["database"]["password"]
-database_db = credentials["database"]["database"]
-database_host = credentials["database"]["host"]
-database_port = credentials["database"]["port"]
-finnhub_token = credentials["finnhub"]["token"]
+# credentials = loadCredentials()
+# database_user = credentials["database"]["username"]
+# database_password = credentials["database"]["password"]
+# database_db = credentials["database"]["database"]
+# database_host = credentials["database"]["host"]
+# database_port = credentials["database"]["port"]
+# finnhub_token = credentials["finnhub"]["token"]
+
+database_user = os.environ["db_username"]
+database_password = os.environ["db_password"]
+database_db = os.environ["db_database"]
+database_host = os.environ["db_host"]
+database_port = os.environ["db_port"]
+finnhub_token = os.environ["finnhub_token"]
 
 # Connect to our Postgres RDS. 
 def rds_connect():
@@ -94,7 +101,7 @@ def generateAverage(start_time, end_time, etf):
             end_time -= increment_time
             start_time -= increment_time
             current_lookback+=1
-            tm.sleep(10) # Pause to not overload API calls.
+            tm.sleep(6) # Pause to not overload API calls.
             continue
 
         # We want to count up to about 3500 candles. Any more felt redundant, though this may be modified. If length of the current JSON return
@@ -245,7 +252,7 @@ def prepare_candle(etf):
                 break
             else:
                 last_run, start_time, end_time = update_time_interval(last_run, start_time, end_time, increment_time, stored_time)
-                tm.sleep(7) # Pause to not overload API.
+                tm.sleep(5) # Pause to not overload API.
                 continue
 
         # Loop through our JSON object to create the candles.
@@ -286,9 +293,17 @@ def generate_candles():
         connection.commit()
         cursor.close()
         connection.close()
+        print(f'Completed {etf}')
 
-def main():
+# def main():
+#     generate_candles()  
+
+# if __name__ == "__main__":
+#     main()
+
+# Handler
+def my_handler(event, context):
     generate_candles()  
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()

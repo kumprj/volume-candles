@@ -1,0 +1,25 @@
+# Uses https://github.com/yvesgurcan/deploy-lambda-function
+
+name: Deploy Lambda
+on:
+  push:
+    branches: [ master ]
+jobs:
+  deploy-lambda:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.7' # Version range or exact version of a Python version to use, using SemVer's version range syntax
+          architecture: 'x64' # optional x64 or x86. Defaults to x64 if not specified
+      - run: cat src/requirements.txt | xargs -n 1 python3 -m pip install --target package/
+      - run: cp src/createcandle.py package/createcandle.py
+      - run: cd package/ && zip -r ../package.zip **
+      - uses: yvesgurcan/deploy-lambda-function@v0.0.5
+        with:
+          package: package.zip
+          function-name: volume-candles
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          AWS_SECRET_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
