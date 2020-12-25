@@ -40,7 +40,7 @@ increment_time = 600000 # Increment 2 weeks in UNIX Standard Time
 # finnhub_token = credentials["finnhub"]["token"]
 
 database_user = os.environ["db_username"]
-database_password = os.environ["database"]["db_password"]
+database_password = os.environ["db_password"]
 database_db = os.environ["db_database"]
 database_host = os.environ["db_host"]
 database_port = os.environ["db_port"]
