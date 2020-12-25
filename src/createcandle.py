@@ -294,6 +294,7 @@ def generate_candles():
             connection.commit()
             cursor.close()
             connection.close()
+            print(f'Completed {etf}')
         except AssertionError as error:
             print(error)
 
