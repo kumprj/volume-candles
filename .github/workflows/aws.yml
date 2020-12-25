@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
-      - run: cat src/requirements.txt | xargs -n 1 python3 -m pip install -U --user --prefix= --target package
+      - run: cat src/requirements.txt | xargs -n 1 python3 -m pip install --user --install-option="--prefix=" --target package/
       - run: cp src/createcandle.py createcandle/sendtweet.py
       - run: cd package/ && zip -r ../package.zip **
       - uses: yvesgurcan/deploy-lambda-function@v0.0.5
