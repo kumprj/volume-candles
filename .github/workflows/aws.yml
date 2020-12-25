@@ -3,7 +3,7 @@
 name: Deploy Lambda
 on:
   push:
-    branches: [ feature/try-catch ]
+    branches: [ master ]
 jobs:
   deploy-lambda:
     runs-on: ubuntu-latest
