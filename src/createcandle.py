@@ -1,7 +1,6 @@
 import collections
 import copy
 import os
-from credentials import loadCredentials
 import datetime as dt
 import json
 import psycopg2
