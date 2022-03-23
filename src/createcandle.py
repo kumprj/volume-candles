@@ -54,7 +54,7 @@ def rds_connect():
                             port = database_port,
                             database = database_db)
 
-# Location the max length of the dataframe and append our candle to the end.
+# Locate the max length of the dataframe and append our candle to the end.
 def store_row(df, row):
     insert_loc = df.index.max()
 
@@ -64,7 +64,7 @@ def store_row(df, row):
         df.loc[insert_loc + 1] = row
 
 # Function to increment our time interval to continue generating candles. Needed because of API limits
-# and we can't load many years of data at a time. Downsides of free resources.
+# and we can't load many years of data at a time. Downsides of free data resource.
 def update_time_interval(last_run, start_time, end_time, increment_time, stored_time):
     # We want to ensure we run up until present day.
     if stored_time > (start_time + increment_time):
@@ -132,7 +132,7 @@ def create_vol_candle(etf, etf_candle, df, avg_volume_size, average_volume, cand
     current_candle_low = 0.0
     first_candle_open = 0.0
 
-    # Break this into functin once we're certain all the details are ironed out.
+    # Break this into function once we're certain all the details are ironed out.
     for close, high, low, open_, volume, time in zip(etf_candle['c'], etf_candle['h'], etf_candle['l'], etf_candle['o'], etf_candle['v'], etf_candle['t']):
         average = int(average_volume / avg_volume_size)
         current_volume += int(volume)
